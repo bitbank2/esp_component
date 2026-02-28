@@ -5,9 +5,11 @@ import esphome.config_validation as cv
 from esphome.const import (
     CONF_BUSY_PIN,
     CONF_DC_PIN,
+    CONF_CS_PIN,
     CONF_FULL_UPDATE_EVERY,
     CONF_ID,
     CONF_LAMBDA,
+    CONF_MODEL,
     CONF_PAGES,
     CONF_RESET_DURATION,
     CONF_RESET_PIN,
@@ -15,17 +17,24 @@ from esphome.const import (
 
 DEPENDENCIES = ["spi"]
 
-epaper_ns = cg.esphome_ns.namespace("epaper")
+MODELS = {
+    "ep154_200x200": ("EP154_200x200"),
+    "ep154b_200x200": ("EP154B_200x200"),
+    "ep154_152x152": ("EP154_152x152"),
+}
+epaper_ns = cg.esphome_ns.namespace("bb_epaper")
 
-BB_EPaperBase = epaper_ns.class_(
-    "BB_EPaperBase", cg.PollingComponent, spi.SPIDevice, display.DisplayBuffer
+bb_epaper = epaper_ns.class_(
+    "bb_epaper", cg.PollingComponent, spi.SPIDevice, display.DisplayBuffer
 )
 
 CONFIG_SCHEMA = cv.Schema(
     display.FULL_DISPLAY_SCHEMA.extend(
         {
-            cv.GenerateID(): cv.declare_id(BB_EPaperBase),
+            cv.GenerateID(): cv.declare_id(bb_epaper),
             cv.Required(CONF_DC_PIN): pins.gpio_output_pin_schema,
+            cv.Required(CONF_CS_PIN): pins.gpio_output_pin_schema,
+            cv.Required(CONF_MODEL): cv.one_of(*MODELS, lower=True),
             cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
             cv.Optional(CONF_BUSY_PIN): pins.gpio_input_pin_schema,
             cv.Optional(CONF_FULL_UPDATE_EVERY): cv.int_range(min=1, max=4294967295),
@@ -35,8 +44,8 @@ CONFIG_SCHEMA = cv.Schema(
             ),
         }
     )
-    .extend(cv.polling_component_schema("1s"))
-    .extend(spi.spi_device_schema()),
+    .extend(cv.polling_component_schema("30s"))
+    .extend(spi.spi_device_schema(cs_pin_required=True)),
     cv.has_at_most_one_key(CONF_PAGES, CONF_LAMBDA),
 )
 

@@ -6,25 +6,24 @@
 #include "bb_epaper.h"
 
 namespace esphome {
-namespace epaper {
+namespace bb_epaper {
 
-class BB_EPaperBase : public display::DisplayBuffer,
+class bb_epaper : public display::DisplayBuffer,
                       public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW, spi::CLOCK_PHASE_LEADING,
                                             spi::DATA_RATE_8MHZ> {
  public:
-  void set_dc_pin(GPIOPin *dc_pin) { dc_pin_ = dc_pin; }
-  void set_power_pin(GPIOPin *power_pin) { power_pin_ = power_pin; }
+  bb_epaper(void) { ESP_LOGCONFIG("bb_epaper class", "instantiation");}
+  void set_dc_pin(InternalGPIOPin *dc_pin) { dc_pin_ = dc_pin; }
+  void set_cs_pin(InternalGPIOPin *cs_pin) { cs_pin_ = cs_pin; }
+  void set_power_pin(InternalGPIOPin *power_pin) { power_pin_ = power_pin; }
   float get_setup_priority() const override;
-  void set_reset_pin(GPIOPin *reset) { this->reset_pin_ = reset; }
-  void set_busy_pin(GPIOPin *busy) { this->busy_pin_ = busy; }
+  void set_reset_pin(InternalGPIOPin *reset) { this->reset_pin_ = reset; }
+  void set_busy_pin(InternalGPIOPin *busy) { this->busy_pin_ = busy; }
   void set_reset_duration(uint32_t reset_duration) { this->reset_duration_ = reset_duration; }
 
   void command(uint8_t value);
   void data(uint8_t value);
   void cmd_data(const uint8_t *data, size_t length);
-
-  virtual void display() = 0;
-  virtual void initialize() = 0;
 
   void fill(Color color) override;
 
@@ -39,12 +38,15 @@ class BB_EPaperBase : public display::DisplayBuffer,
 
   display::DisplayType get_display_type() override { return display::DisplayType::DISPLAY_TYPE_BINARY; }
   BBEPAPER _bbepaper;
-  GPIOPin *reset_pin_{nullptr};
-  GPIOPin *dc_pin_;
-  GPIOPin *power_pin_;
-  GPIOPin *busy_pin_{nullptr};
+  InternalGPIOPin *reset_pin_{nullptr};
+  InternalGPIOPin *dc_pin_;
+  InternalGPIOPin *cs_pin_;
+  InternalGPIOPin *power_pin_;
+  InternalGPIOPin *busy_pin_{nullptr};
 
  protected:
+  int get_height_internal() override;
+  int get_width_internal() override;
   void setup_pins_();
 
   void reset_() {
@@ -65,5 +67,5 @@ class BB_EPaperBase : public display::DisplayBuffer,
   void draw_absolute_pixel_internal(int x, int y, Color color) override;
 };  // class
 
-}  // namespace epaper
+}  // namespace bb_epaper
 }  // namespace esphome
