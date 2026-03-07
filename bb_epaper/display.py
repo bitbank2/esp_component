@@ -6,22 +6,17 @@ from esphome.const import (
     CONF_BUSY_PIN,
     CONF_DC_PIN,
     CONF_CS_PIN,
+    CONF_REFRESH,
     CONF_FULL_UPDATE_EVERY,
     CONF_ID,
     CONF_LAMBDA,
     CONF_MODEL,
     CONF_PAGES,
-    CONF_RESET_DURATION,
     CONF_RESET_PIN,
 )
 
 DEPENDENCIES = ["spi"]
 
-MODELS = {
-    "ep154_200x200": ("EP154_200x200"),
-    "ep154b_200x200": ("EP154B_200x200"),
-    "ep154_152x152": ("EP154_152x152"),
-}
 epaper_ns = cg.esphome_ns.namespace("bb_epaper")
 
 bb_epaper = epaper_ns.class_(
@@ -32,16 +27,13 @@ CONFIG_SCHEMA = cv.Schema(
     display.FULL_DISPLAY_SCHEMA.extend(
         {
             cv.GenerateID(): cv.declare_id(bb_epaper),
-            cv.Required(CONF_DC_PIN): pins.gpio_output_pin_schema,
-            cv.Required(CONF_CS_PIN): pins.gpio_output_pin_schema,
-            cv.Required(CONF_MODEL): cv.one_of(*MODELS, lower=True),
+            cv.Required(CONF_MODEL): cv.string,
+            cv.Optional(CONF_REFRESH): cv.string,
+            cv.Optional(CONF_DC_PIN): pins.gpio_output_pin_schema,
+            cv.Optional(CONF_CS_PIN): pins.gpio_output_pin_schema,
             cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
             cv.Optional(CONF_BUSY_PIN): pins.gpio_input_pin_schema,
             cv.Optional(CONF_FULL_UPDATE_EVERY): cv.int_range(min=1, max=4294967295),
-            cv.Optional(CONF_RESET_DURATION): cv.All(
-                cv.positive_time_period_milliseconds,
-                cv.Range(max=core.TimePeriod(milliseconds=500)),
-            ),
         }
     )
     .extend(cv.polling_component_schema("30s"))
@@ -59,14 +51,17 @@ async def to_code(config):
     await display.register_display(var, config)
     await spi.register_spi_device(var, config)
 
-    dc = await cg.gpio_pin_expression(config[CONF_DC_PIN])
-    cg.add(var.set_dc_pin(dc))
-
+    cg.add(var.set_model(config[CONF_MODEL]))
+    if CONF_REFRESH in config:
+        cg.add(var.set_refresh_type(config[CONF_REFRESH]))
     if CONF_LAMBDA in config:
         lambda_ = await cg.process_lambda(
             config[CONF_LAMBDA], [(display.DisplayRef, "it")], return_type=cg.void
         )
         cg.add(var.set_writer(lambda_))
+    if CONF_DC_PIN in config:
+        dc = await cg.gpio_pin_expression(config[CONF_DC_PIN])
+        cg.add(var.set_dc_pin(dc))
     if CONF_RESET_PIN in config:
         reset = await cg.gpio_pin_expression(config[CONF_RESET_PIN])
         cg.add(var.set_reset_pin(reset))
@@ -75,8 +70,6 @@ async def to_code(config):
         cg.add(var.set_busy_pin(busy))
     if CONF_FULL_UPDATE_EVERY in config:
         cg.add(var.set_full_update_every(config[CONF_FULL_UPDATE_EVERY]))
-    if CONF_RESET_DURATION in config:
-        cg.add(var.set_reset_duration(config[CONF_RESET_DURATION]))
     cg.add_library(
         name="bb_epaper",
         repository="https://github.com/bitbank2/bb_epaper.git",

@@ -6,6 +6,7 @@ from esphome.const import (
     CONF_FULL_UPDATE_EVERY,
     CONF_ID,
     CONF_LAMBDA,
+    CONF_REFRESH,
     CONF_MODEL,
     CONF_PAGES,
 )
@@ -20,6 +21,7 @@ CONFIG_SCHEMA = cv.Schema(
     display.FULL_DISPLAY_SCHEMA.extend(
         {
             cv.GenerateID(): cv.declare_id(bb_epaper_iot),
+            cv.Optional(CONF_REFRESH): cv.string,
             cv.Required(CONF_MODEL): cv.string,
             cv.Optional(CONF_FULL_UPDATE_EVERY): cv.int_range(min=1, max=4294967295),
         }
@@ -34,6 +36,8 @@ async def to_code(config):
     await display.register_display(var, config)
 
     cg.add(var.set_model(config[CONF_MODEL]))
+    if CONF_REFRESH in config:
+        cg.add(var.set_refresh_type(config[CONF_REFRESH]))
     if CONF_LAMBDA in config:
         lambda_ = await cg.process_lambda(
             config[CONF_LAMBDA], [(display.DisplayRef, "it")], return_type=cg.void
